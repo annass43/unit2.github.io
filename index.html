@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国经济特区GDP增长可视化</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 22px;
+        }
+        .chart-container {
+            position: relative;
+            height: 500px;
+            margin-bottom: 50px;
+        }
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .tab {
+            background-color: #f1f1f1;
+            border: none;
+            color: #333;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+            transition: background-color 0.3s;
+        }
+        .tab.active {
+            background-color: #ddd;
+            font-weight: bold;
+        }
+        
+        /* 响应式设计样式 */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 18px;
+                margin-bottom: 20px;
+            }
+            .chart-container {
+                height: 400px;
+                margin-bottom: 30px;
+            }
+            .tab {
+                padding: 8px 15px;
+                font-size: 14px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .chart-container {
+                height: 350px;
+                margin-bottom: 20px;
+            }
+            h1 {
+                font-size: 16px;
+            }
+            .tab {
+                padding: 6px 12px;
+                font-size: 12px;
+                margin: 2px 1px;
+            }
+            .tab-container {
+                margin-bottom: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>中国经济特区GDP增长情况(1983-2023)</h1>
+        
+        <div class="tab-container">
+            <button class="tab active" onclick="showData('gdp')">GDP总量</button>
+            <button class="tab" onclick="showData('growth')">增长率</button>
+        </div>
+        
+        <div class="chart-container">
+            <canvas id="gdpChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // 数据
+        const years = [1983, 1988, 1993, 1998, 2003, 2008, 2013, 2018, 2023];
+        
+        const gdpData = {
+            '深圳市': [13.1, 97.0, 453.1, 1544.9, 3640.1, 7941.4, 15234.2, 25266.1, 34606.4],
+            '珠海市': [4.1, 23.8, 133.3, 262.8, 483.1, 1006.6, 1780.9, 3216.8, 4233.2],
+            '厦门市': [9.4, 36.0, 132.3, 403.2, 760.1, 1560.0, 3018.16, 4791.4, 8066.5],
+            '汕头市': [13.4, 57.1, 147.2, 412.7, 526.2, 952, 1565.9, 2503.1, 3158.3],
+            '海南省': [31.1, 77.0, 260.4, 442.1, 714, 1474.7, 3115.9, 4910.7, 7551.2]
+        };
+        
+        const growthData = {
+            '深圳市': [null, 640, 367, 241, 136, 118, 92, 66, 37],
+            '珠海市': [null, 480, 460, 97, 84, 108, 77, 81, 32],
+            '厦门市': [null, 283, 268, 205, 89, 105, 93, 59, 68],
+            '汕头市': [null, 326, 158, 180, 28, 81, 64, 60, 26],
+            '海南省': [null, 148, 238, 70, 62, 107, 111, 58, 54]
+        };
+        
+        // 颜色配置
+        const colors = {
+            '深圳市': 'rgba(255, 99, 132, 0.8)',
+            '珠海市': 'rgba(54, 162, 235, 0.8)',
+            '厦门市': 'rgba(255, 206, 86, 0.8)',
+            '汕头市': 'rgba(75, 192, 192, 0.8)',
+            '海南省': 'rgba(153, 102, 255, 0.8)'
+        };
+        
+        // 图表变量
+        let currentChart;
+        let currentData = 'gdp';
+        
+        // 初始化图表
+        function initChart() {
+            const ctx = document.getElementById('gdpChart').getContext('2d');
+            
+            // 根据数据类型选择图表类型
+            const chartType = currentData === 'gdp' ? 'bar' : 'line';
+            
+            const datasets = Object.keys(gdpData).map(city => {
+                return {
+                    label: city,
+                    data: currentData === 'gdp' ? gdpData[city] : growthData[city],
+                    backgroundColor: colors[city],
+                    borderColor: colors[city].replace('0.8', '1'),
+                    borderWidth: 1,
+                    tension: 0.2
+                };
+            });
+
+            // 获取当前视口宽度
+            const windowWidth = window.innerWidth;
+            
+            // 根据屏幕宽度调整配置
+            const fontSizeTitle = windowWidth < 480 ? 14 : windowWidth < 768 ? 16 : 18;
+            const fontSizeTicks = windowWidth < 480 ? 10 : windowWidth < 768 ? 11 : 12;
+            const fontSizeLegend = windowWidth < 480 ? 10 : windowWidth < 768 ? 11 : 12;
+            const displayLegend = windowWidth > 480; // 在非常小的屏幕上隐藏图例
+            
+            currentChart = new Chart(ctx, {
+                type: chartType,
+                data: {
+                    labels: years,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: windowWidth > 480, // 小屏幕不显示轴标题
+                                text: currentData === 'gdp' ? 'GDP (亿元)' : '增长率 (%)',
+                                font: {
+                                    size: fontSizeTicks
+                                }
+                            },
+                            ticks: {
+                                font: {
+                                    size: fontSizeTicks
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: windowWidth > 480, // 小屏幕不显示轴标题
+                                text: '年份',
+                                font: {
+                                    size: fontSizeTicks
+                                }
+                            },
+                            ticks: {
+                                font: {
+                                    size: fontSizeTicks
+                                },
+                                maxRotation: windowWidth < 480 ? 90 : 0, // 在小屏幕上旋转标签
+                                minRotation: windowWidth < 480 ? 90 : 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: currentData === 'gdp' ? '经济特区GDP总量对比 (1983-2023)' : '经济特区GDP增长率对比 (1983-2023)',
+                            font: {
+                                size: fontSizeTitle
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += currentData === 'gdp' 
+                                            ? context.parsed.y + ' 亿元' 
+                                            : context.parsed.y + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        },
+                        legend: {
+                            display: displayLegend,
+                            position: windowWidth < 768 ? 'bottom' : 'top',
+                            labels: {
+                                boxWidth: windowWidth < 768 ? 10 : 20,
+                                padding: windowWidth < 768 ? 5 : 10,
+                                font: {
+                                    size: fontSizeLegend
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 切换数据类型（GDP或增长率）
+        function showData(dataType) {
+            if (dataType === currentData) return;
+            
+            currentData = dataType;
+            updateChart();
+            
+            // 更新标签状态
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`.tab[onclick="showData('${dataType}')"]`).classList.add('active');
+        }
+        
+        // 更新图表
+        function updateChart() {
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            initChart();
+        }
+        
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initChart();
+        });
+        
+        // 添加窗口大小变化监听
+        window.addEventListener('resize', function() {
+            // 延迟执行以避免频繁重绘
+            if (this.resizeTimer) {
+                clearTimeout(this.resizeTimer);
+            }
+            this.resizeTimer = setTimeout(function() {
+                updateChart();
+            }, 200);
+        });
+    </script>
+</body>
+</html>
